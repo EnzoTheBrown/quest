@@ -1,3 +1,4 @@
+import sys
 import json
 import os
 from .model import Quest, Adventure, Bundle
@@ -9,7 +10,7 @@ con = sqlite3.connect(db_path)
 
 def init_quest(con):
     cur = con.cursor()
-    cur.execute("CREATE TABLE quest(id, name, url, data, headers, method)")
+    cur.execute("CREATE TABLE quest(id, name, url, data, headers, method, spell)")
     cur.execute("CREATE TABLE adventure(id, name)")
     cur.execute("CREATE TABLE adventure_quest(adventure_id, quest_id)")
     cur.execute("CREATE TABLE bundle(id, version, items)")
@@ -39,6 +40,13 @@ def create_adventure(con, adventure: Adventure):
 
 
 def add_quest_to_adventure(con, adventure: Adventure, quest: Quest):
+    '''
+        add quest to adventure
+
+        params:
+            adventure: Adventure
+            quest: Quest
+    '''
     cur = con.cursor()
     sql = '''
     INSERT INTO adventure_quest VALUES (?, ?)
@@ -54,7 +62,8 @@ def get_quest_from_row(row) -> Quest:
         url=row[2],
         data=json.loads(row[3]),
         headers=json.loads(row[4]),
-        method=row[5]
+        method=row[5],
+        spell=row[6],
     )
 
 
@@ -62,7 +71,7 @@ def get_quest_by_id(con, id: str) -> Quest:
     cur = con.cursor()
     res = cur.execute(
         '''
-        SELECT id, name, url, data, headers, method
+        SELECT id, name, url, data, headers, method, spell
         FROM quest
         WHERE id = ?
         ''',
@@ -108,10 +117,10 @@ def get_adventure_by_name(con, name) -> Adventure:
 def create_quest(con, quest: Quest):
     cur = con.cursor()
     sql = '''
-    INSERT INTO quest (id, name, url, data, headers, method)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO quest (id, name, url, data, headers, method, spell)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     '''
-    cur.execute(sql, (quest.id, quest.name, quest.url, json.dumps(quest.data), json.dumps(quest.headers), quest.method))
+    cur.execute(sql, (quest.id, quest.name, quest.url, json.dumps(quest.data), json.dumps(quest.headers), quest.method, quest.spell))
     con.commit()
 
 
@@ -128,10 +137,10 @@ def update_quest(con, quest: Quest):
     cur = con.cursor()
     sql = '''
     UPDATE quest
-    SET name = ?, url = ?, data = ?, headers = ?, method = ? 
+    SET name = ?, url = ?, data = ?, headers = ?, method = ?, spell = ?
     WHERE id = ?
     '''
-    cur.execute(sql, (quest.name, quest.url, json.dumps(quest.data), json.dumps(quest.headers), quest.method, quest.id))
+    cur.execute(sql, (quest.name, quest.url, json.dumps(quest.data), json.dumps(quest.headers), quest.method, quest.spell, quest.id))
     con.commit()
 
 
@@ -139,7 +148,7 @@ def list_quests(con) -> List[Quest]:
     cur = con.cursor()
     res = cur.execute(
         '''
-        SELECT id, name, url, data, headers, method
+        SELECT id, name, url, data, headers, method, spell
         FROM quest
         '''
     )
@@ -151,7 +160,8 @@ def list_quests(con) -> List[Quest]:
             url=row[2],
             data=json.loads(row[3]),
             headers=json.loads(row[4]),
-            method=row[5]
+            method=row[5],
+            spell=row[6],
         ) for row in rows
     ]
 
@@ -160,7 +170,7 @@ def get_quest_by_name(con, adventure, name) -> Quest:
     cur = con.cursor()
     res = cur.execute(
         '''
-        SELECT q.id, q.name, q.url, q.data, q.headers, q.method
+        SELECT q.id, q.name, q.url, q.data, q.headers, q.method, q.spell
         FROM quest q INNER JOIN adventure_quest aq on q.id = aq.quest_id
         WHERE (q.name = ?) AND (aq.adventure_id = ?) 
         ''',
@@ -198,7 +208,7 @@ def get_bundle(con, adventure: Adventure) -> Bundle:
         )
         return bundle
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
         return Bundle()
 
 

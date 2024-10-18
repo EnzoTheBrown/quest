@@ -1,3 +1,4 @@
+import uuid
 from .model import Quest, Adventure, Bundle
 from .db import (
     con, create_quest, list_quests, update_quest, create_adventure, add_quest_to_adventure,
@@ -88,6 +89,18 @@ def quest_update(method, name, url, data, headers, adventure):
     update_quest(con, quest)
 
 
+@quest.command('spell')
+@click.argument('name')
+@click.argument('adventure')
+def create_spell(name, adventure):
+    adventure = get_adventure_by_name(con, adventure)
+    quest = [q for q in adventure.quests if q.name == name][0]
+    spell_content = quest.spell or 'def spell(response):\n\treturn {}'
+    message = click.edit(spell_content)
+    quest.spell = message
+    update_quest(con, quest)
+
+
 @quest.command('list')
 @click.argument('adventure')
 def quest_list(adventure):
@@ -110,7 +123,9 @@ def quest_delete(name, adventure):
 def quest_call(name, adventure):
     adventure = get_adventure_by_name(con, adventure)
     quest = [quest for quest in adventure.quests if quest.name == name][0]
+    bundle = adventure.bundle
     print(adventure.call(quest))
+    update_bundle(con, bundle)
 
 
 @bundle.command('create')
@@ -126,7 +141,7 @@ def create_bundle_(adventure, items):
 @bundle.command('update')
 @click.argument('adventure')
 @click.option('--items', '-i', multiple=True)
-def create_bundle_(adventure, items):
+def update_bundle_(adventure, items):
     items = option_to_dict(items)
     adventure = get_adventure_by_name(con, adventure)
     bundle = adventure.bundle
